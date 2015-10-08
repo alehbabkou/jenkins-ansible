@@ -1,0 +1,49 @@
+- name: update YUM repositories
+  shell: 'yum -y update'
+
+- name: Install OpenJDK
+  yum: name=java-1.8.0-openjdk-devel state=present
+
+- name: Set JAVA_HOME enviroment variable
+  lineinfile: dest='/etc/profile' regexp='^#?\s*export JAVA_HOME(.*)$' line='export JAVA_HOME=/usr/lib/jvm/java' state=present
+
+- name: install the 'Development tools' package group
+  yum: name="@Development tools" state=present
+
+- name: upgrade all package
+  shell: 'yum -y upgrade'
+
+    ###### Since Ant in yum and apt is too old, download the .tar.bz2 file and install it
+    # Install Apache Ant
+- name: Download Apache Ant
+  get_url: url=http://mirror.cc.columbia.edu/pub/software/apache//ant/binaries/apache-ant-1.9.6-bin.tar.bz2 dest=/tmp/apache-ant-1.9.6-bin.tar.bz2
+- name: Untar Ant
+  shell: chdir=/tmp creates=/opt/apache-ant-1.9.6 tar -jxf apache-ant-1.9.6-bin.tar.bz2 -C /opt
+- lineinfile: dest=/etc/profile regexp='^#?\s*export ANT_HOME=(.*)$' line='export ANT_HOME=/opt/apache-ant-1.9.6' state=present
+- lineinfile: dest=/etc/profile regexp='^#?\s*export PATH=(.*)ANT_HOME(.*)$' line="export PATH=$PATH:$ANT_HOME/bin" state=present
+
+    # Install Apache Maven, since there is no Maven package in yum and apt repo
+- name: Download Apache Maven
+  get_url: url=http://apache.claz.org/maven/maven-3/3.3.3/binaries/apache-maven-3.3.3-bin.tar.gz dest=/tmp/apache-maven-3.3.3-bin.tar.gz
+- name: Untar Maven
+  shell: chdir=/tmp creates=/opt/apache-maven-3.3.3 tar -zxf apache-maven-3.3.3-bin.tar.gz -C /opt
+- lineinfile: dest=/etc/profile regexp='^#?\s*export MAVEN_HOME=(.*)$' line='export MAVEN_HOME=/opt/apache-maven-3.3.3' state=present
+- lineinfile: dest=/etc/profile regexp='^#?\s*export PATH=(.*)MAVEN_HOME(.*)$' line="export PATH=$PATH:$MAVEN_HOME/bin" state=present
+
+
+- name: Download Jenkins
+  get_url: url=http://pkg.jenkins-ci.org/redhat/jenkins.repo dest=/etc/yum.repos.d/jenkins.repo 
+#  when: is_centos
+
+- name: Ensure Jenkins GPG key installed
+  command: rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key
+
+- name: Ensure Jenkins installed
+  yum: name=jenkins state=present
+
+- name: Ensure Jenkins is running
+  service: name=jenkins state=running enabled=true
+- lineinfile: dest=/etc/sysconfig/iptables line="-A INPUT -m state --state NEW -m tcp -p tcp --dport 8080 -j ACCEPT" state=present
+#- name: Configure YUM repository
+ # action: yum name=jenkins state=present
+  #when: is_centos
